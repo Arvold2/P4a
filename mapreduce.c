@@ -51,71 +51,74 @@ int num_partitions;
 // needs to take key/value pairs from the many different mappers and store them in a way that later reducers can access them
 void MR_Emit(char *key, char *value){
     int listno = MR_DefaultHashPartition(key, num_partitions);
-
-    kvpair *pair = malloc(sizeof(kvpair));
+    kvpair *pair;
     printf("Inside MR_EMIT\n");
+
     //Grab locks while updating shared data structs
     pthread_mutex_lock(&m);
-    pair->values = malloc(sizeof(value_node));
-    pair->key = key;
-    pair->values->value = value;
-    pair->values->nextval = NULL;
+
+    // Creates new node for value passed in
+    value_node* new_val = malloc(sizeof(value_node));
+    new_val->value = value;
+    new_val->nextval = NULL;
+
     //check if partition is empty
      if (parts[listno]->head == NULL){
+            printf("EMPTY PARTITION\n");
+            if((pair = malloc(sizeof(kvpair))) == NULL){
+                pthread_mutex_unlock(&m);
+                exit(1);
+            }
+            // Initialize first kvpair of partition
+            pair->key = key;
+            pair->values = new_val;
+            pair->endval = pair->values;
+            pair->nextpair = NULL;
+
+            //insert kvpair into partition at index 0
             parts[listno]->head = pair;
             parts[listno]->end = pair;
             parts[listno]->curr = parts[listno]->head;
             parts[listno]->size++;
             printf("Incrementing size in MR_Emit to %d for partition %d. Added: %s\n", parts[listno]->size, listno, pair->key);
+            pthread_mutex_unlock(&m);
+            return;
     }
 
-    //key is found at head of list, add new value to list
-    if(strcmp(parts[listno]->head->key,key) == 0){
-        parts[listno]->head->values->nextval = value;
-        parts[listno]->head->endval = value;
-        parts[listno]->head->endval->nextval = NULL;
-        pthread_mutex_unlock(&m);
-        printf("HEAD:added value: %s to list for key %s",value,key);
-        return;
-    }
-    else{
-        parts[listno]->curr = parts[listno]->head->nextpair;
-    
+    // Start iterator at head
+    parts[listno]->curr = parts[listno]->head;
 
     //search through partition for matching key
-    for(int i = 0; i < parts[listno]->size; i++){
+    while(parts[listno]->curr != NULL){
         //key is found at head of list, add new value to list
         if(strcmp(parts[listno]->curr->key,key) == 0){
-            parts[listno]->curr->values->nextval = value;
-            parts[listno]->curr->endval = value;
+            parts[listno]->curr->values->nextval = new_val;
+            parts[listno]->curr->endval = new_val;
             parts[listno]->head->endval->nextval = NULL;
             pthread_mutex_unlock(&m);
-            printf("CURR: added value: %s to list for key %s",value,key);
+            printf("CURR: added value: %s to list for key %s",new_val->value,key);
             return;
-        }
-        else{
+          }
+          else{
+            // Go to next pair
             parts[listno]->curr = parts[listno]->curr->nextpair;
-        }
+          }
     }
-    }
+
+
     //key was not in partition, add new node
-    pair->values->value = value;
-    pair->values->nextval = NULL;
-    if (parts[listno]->head == NULL){
-        parts[listno]->head = pair;
-        parts[listno]->end = pair;
-        parts[listno]->curr = parts[listno]->head;
-        parts[listno]->curr->endval->nextval = value;
-        parts[listno]->curr->endval = parts[listno]->curr->endval->nextval;   
-        parts[listno]->size++;
-        printf("Incrementing size in MR_Emit to %d for partition %d. Added: %s\n", parts[listno]->size, listno, pair->key);
+    if((pair = malloc(sizeof(kvpair))) == NULL){
+        pthread_mutex_unlock(&m);
+        exit(1);
     }
-    else {
-        parts[listno]->end->nextpair = pair;
-        parts[listno]->end = pair;
-        parts[listno]->size++;
-        printf("Incrementing size in MR_Emit to %d for partition %d. Added: %s\n", parts[listno]->size, listno, pair->key);
-    }
+
+    pair->values = new_val;
+    parts[listno]->end->nextpair = pair;
+    parts[listno]->end = pair;
+    parts[listno]->end->nextpair = NULL;
+    parts[listno]->size++;
+    printf("Incrementing size in MR_Emit to %d for partition %d. Added: %s\n", parts[listno]->size, listno, pair->key);
+
     //Release lock when done
     pthread_mutex_unlock(&m);
     printf("Leaving MR_EMIT\n");
