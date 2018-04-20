@@ -9,12 +9,19 @@
 //Lock initialization
 pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
 
+typedef struct value_node {
+    char* value;
+    void* nextval;
+} value_node;
+
 typedef struct kvpair {
     char* key;
-    char* values;
+    value_node* values;
+    value_node* endval;
     void* nextpair;
     int index;
 } kvpair;
+
 
 typedef struct args{
     char* filename;
@@ -49,12 +56,57 @@ void MR_Emit(char *key, char *value){
     printf("Inside MR_EMIT\n");
     //Grab locks while updating shared data structs
     pthread_mutex_lock(&m);
+    pair->values = malloc(sizeof(value_node));
     pair->key = key;
-    pair->values = value;
+    pair->values->value = value;
+    pair->values->nextval = NULL;
+    //check if partition is empty
+     if (parts[listno]->head == NULL){
+            parts[listno]->head = pair;
+            parts[listno]->end = pair;
+            parts[listno]->curr = parts[listno]->head;
+            parts[listno]->size++;
+            printf("Incrementing size in MR_Emit to %d for partition %d. Added: %s\n", parts[listno]->size, listno, pair->key);
+    }
+
+    //key is found at head of list, add new value to list
+    if(strcmp(parts[listno]->head->key,key) == 0){
+        parts[listno]->head->values->nextval = value;
+        parts[listno]->head->endval = value;
+        parts[listno]->head->endval->nextval = NULL;
+        pthread_mutex_unlock(&m);
+        printf("HEAD:added value: %s to list for key %s",value,key);
+        return;
+    }
+    else{
+        parts[listno]->curr = parts[listno]->head->nextpair;
+    
+
+    //search through partition for matching key
+    for(int i = 0; i < parts[listno]->size; i++){
+        //key is found at head of list, add new value to list
+        if(strcmp(parts[listno]->curr->key,key) == 0){
+            parts[listno]->curr->values->nextval = value;
+            parts[listno]->curr->endval = value;
+            parts[listno]->head->endval->nextval = NULL;
+            pthread_mutex_unlock(&m);
+            printf("CURR: added value: %s to list for key %s",value,key);
+            return;
+        }
+        else{
+            parts[listno]->curr = parts[listno]->curr->nextpair;
+        }
+    }
+    }
+    //key was not in partition, add new node
+    pair->values->value = value;
+    pair->values->nextval = NULL;
     if (parts[listno]->head == NULL){
         parts[listno]->head = pair;
         parts[listno]->end = pair;
         parts[listno]->curr = parts[listno]->head;
+        parts[listno]->curr->endval->nextval = value;
+        parts[listno]->curr->endval = parts[listno]->curr->endval->nextval;   
         parts[listno]->size++;
         printf("Incrementing size in MR_Emit to %d for partition %d. Added: %s\n", parts[listno]->size, listno, pair->key);
     }
@@ -96,7 +148,7 @@ char *get_next(char *key, int partition_number){
             // Continue
 
     // Return NULL if not found
-  //  printf("Partition_Number: %d Size: %d\n", partition_number, parts[partition_number]->size);
+    printf("Partition_Number: %d Size: %d\n", partition_number, parts[partition_number]->size);
 
     for (int i = 0; i < parts[partition_number]->size; i++) {
       //printf("Index: %d\n",sorted_arr[partition_number][i]->index);
@@ -109,14 +161,14 @@ char *get_next(char *key, int partition_number){
       //printf("DefaultHash after check for null");
       if (strcmp(check_key,key) == 0) {
         index = sorted_arr[partition_number][i]->index++;
-        return_value = &(sorted_arr[partition_number][i]->values[index]);
+        return_value = (sorted_arr[partition_number][i]->values[index]);
         //Needed?
         if (strcmp(return_value, ending_key) == 0)
           return_value = NULL;
 
 
 
-        //printf("get_next index: %d, return_value: %s\n", index, return_value);
+        printf("get_next key: %s index: %d, return_value: %s\n",key, index, return_value);
 
         break;
       }
@@ -146,8 +198,9 @@ void Partition_sort() {
                 break;
             }
             sorted_arr[i][j] = parts[i]->curr;
-            printf(">>>> sorted_arr[%d][%d]: %s\n", i,j,sorted_arr[i][j]->key);
-            parts[i]->curr = parts[i]->curr->nextpair;
+            printf(">>>> sorted_arr[%d][%d]->key: %s\n", i,j,sorted_arr[i][j]->key);
+            printf(">>>> sorted_arr[%d][%d]->value: %s\n", i,j,sorted_arr[i][j]->values[0]);
+             parts[i]->curr = parts[i]->curr->nextpair;
             //printf(">>>> sorted_arr[%d][%d]: %s\n", i,j,sorted_arr[i][j]->key);
 
         }
