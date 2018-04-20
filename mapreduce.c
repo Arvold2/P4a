@@ -164,7 +164,7 @@ char *get_next(char *key, int partition_number){
       //printf("DefaultHash after check for null");
       if (strcmp(check_key,key) == 0) {
         index = sorted_arr[partition_number][i]->index++;
-        return_value = (sorted_arr[partition_number][i]->values[index]);
+        return_value = (sorted_arr[partition_number][i]->values->value);
         //Needed?
         if (strcmp(return_value, ending_key) == 0)
           return_value = NULL;
@@ -202,7 +202,7 @@ void Partition_sort() {
             }
             sorted_arr[i][j] = parts[i]->curr;
             printf(">>>> sorted_arr[%d][%d]->key: %s\n", i,j,sorted_arr[i][j]->key);
-            printf(">>>> sorted_arr[%d][%d]->value: %s\n", i,j,sorted_arr[i][j]->values[0]);
+            printf(">>>> sorted_arr[%d][%d]->value: %s\n", i,j,sorted_arr[i][j]->values->value);
              parts[i]->curr = parts[i]->curr->nextpair;
             //printf(">>>> sorted_arr[%d][%d]: %s\n", i,j,sorted_arr[i][j]->key);
 
