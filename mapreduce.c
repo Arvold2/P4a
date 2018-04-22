@@ -16,6 +16,7 @@ typedef struct value_node {
 
 typedef struct kvpair {
     char* key;
+    value_node* itr;
     value_node* values;
     value_node* endval;
     void* nextpair;
@@ -52,7 +53,7 @@ int num_partitions;
 void MR_Emit(char *key, char *value){
     int listno = MR_DefaultHashPartition(key, num_partitions);
     kvpair *pair;
-    printf("Inside MR_EMIT\n");
+    printf("Inside MR_EMIT: Listno: %d\n", listno);
 
     //Grab locks while updating shared data structs
     pthread_mutex_lock(&m);
@@ -61,6 +62,7 @@ void MR_Emit(char *key, char *value){
     value_node* new_val = malloc(sizeof(value_node));
     new_val->value = value;
     new_val->nextval = NULL;
+    printf("New value node with value: %s\n", new_val->value);
 
     //check if partition is empty
      if (parts[listno]->head == NULL){
@@ -72,6 +74,7 @@ void MR_Emit(char *key, char *value){
             // Initialize first kvpair of partition
             pair->key = key;
             pair->values = new_val;
+	    pair->itr = new_val;
             pair->endval = pair->values;
             pair->nextpair = NULL;
 
@@ -92,18 +95,21 @@ void MR_Emit(char *key, char *value){
     while(parts[listno]->curr != NULL){
         //key is found at head of list, add new value to list
         if(strcmp(parts[listno]->curr->key,key) == 0){
-            parts[listno]->curr->values->nextval = new_val;
+            parts[listno]->curr->endval->nextval = new_val; // Is this right??
             parts[listno]->curr->endval = new_val;
             parts[listno]->head->endval->nextval = NULL;
             pthread_mutex_unlock(&m);
-            printf("CURR: added value: %s to list for key %s",new_val->value,key);
-            return;
-          }
+            printf("CURR: added value: %s to list for key %s\n",new_val->value,key);
+    	    parts[listno]->curr = parts[listno]->head;
+    	    return;
+	}
           else{
             // Go to next pair
             parts[listno]->curr = parts[listno]->curr->nextpair;
           }
     }
+
+    parts[listno]->curr = parts[listno]->head;
 
 
     //key was not in partition, add new node
@@ -111,10 +117,13 @@ void MR_Emit(char *key, char *value){
         pthread_mutex_unlock(&m);
         exit(1);
     }
-
+    pair->key = key;
     pair->values = new_val;
+    new_val->nextval = NULL;
+    new_val->value = value;
     parts[listno]->end->nextpair = pair;
     parts[listno]->end = pair;
+    parts[listno]->end->itr = new_val;
     parts[listno]->end->nextpair = NULL;
     parts[listno]->size++;
     printf("Incrementing size in MR_Emit to %d for partition %d. Added: %s\n", parts[listno]->size, listno, pair->key);
@@ -127,7 +136,7 @@ void MR_Emit(char *key, char *value){
 
 unsigned long MR_DefaultHashPartition(char *key, int num_partitions){
     unsigned long hash = 5381;
-    printf("Partition Key: %s\n",key);
+    printf("Hashing Partition Key: %s\n",key);
     int c;
 
     while ((c = *key++) != '\0')
@@ -141,7 +150,6 @@ char *get_next(char *key, int partition_number){
 
     char *check_key;
     char *return_value = NULL;
-    char *ending_key = "";
     int index;
 
     // Loop through the different keys in the partition_number
@@ -157,18 +165,23 @@ char *get_next(char *key, int partition_number){
       //printf("Index: %d\n",sorted_arr[partition_number][i]->index);
 
       check_key = sorted_arr[partition_number][i]->key;
-
+//      if (strcmp(check_key, "") == 0)
+//	continue;
       printf("get_next: check_key: %s, actual_key: %s for index: %d\n", check_key, key, i);
       //if (strcmp(check_key,ending_key) == 0)
       //  return NULL;
       //printf("DefaultHash after check for null");
       if (strcmp(check_key,key) == 0) {
-        index = sorted_arr[partition_number][i]->index++;
-        return_value = (sorted_arr[partition_number][i]->values->value);
+	printf("Found Key in get_next\n");
+	if (sorted_arr[partition_number][i]->itr == NULL)
+		return NULL;
+	printf("Did not return NULL\n");	
+        return_value = (sorted_arr[partition_number][i]->itr)->value;
+	printf("Return value in get_next is: %s\n", return_value);
+	if (return_value == NULL)
+		return NULL;
+	sorted_arr[partition_number][i]->itr = sorted_arr[partition_number][i]->itr->nextval;
         //Needed?
-        if (strcmp(return_value, ending_key) == 0)
-          return_value = NULL;
-
 
 
         printf("get_next key: %s index: %d, return_value: %s\n",key, index, return_value);
@@ -176,7 +189,7 @@ char *get_next(char *key, int partition_number){
         break;
       }
     }
-
+    printf("GET_NEXT RETURNING %s\n", return_value);
     return return_value;
 }
 
@@ -194,10 +207,12 @@ int struct_cmp(const void *a, const void *b){
 void Partition_sort() {
     printf("Inside MR_Partition_sort\n");
     sorted_arr = malloc(num_partitions*sizeof(void **));
+    // Transfer from LL to array
     for(int i = 0; i < num_partitions; i++){
         sorted_arr[i] = malloc(sizeof(partition)*(parts[i]->size));
         for(int j = 0; j < parts[i]->size;j++){
             if(parts[i]->curr == NULL){
+		printf("NULL in Partition Sort\n");
                 break;
             }
             sorted_arr[i][j] = parts[i]->curr;
