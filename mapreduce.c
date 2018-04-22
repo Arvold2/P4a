@@ -48,6 +48,8 @@ kvpair ***sorted_arr;
 int *partition_iterator;
 int head = 0;
 int num_partitions;
+char *filename;
+int file_index = 0;
 
 // needs to take key/value pairs from the many different mappers and store them in a way that later reducers can access them
 void MR_Emit(char *key, char *value){
@@ -175,7 +177,7 @@ char *get_next(char *key, int partition_number){
 	printf("Found Key in get_next\n");
 	if (sorted_arr[partition_number][i]->itr == NULL)
 		return NULL;
-	printf("Did not return NULL\n");	
+	printf("Did not return NULL\n");
         return_value = (sorted_arr[partition_number][i]->itr)->value;
 	printf("Return value in get_next is: %s\n", return_value);
 	if (return_value == NULL)
@@ -247,6 +249,47 @@ char *KeySeek(int part_num){
   return returnkey;
 }
 
+void *Map_Threads(int args) {
+  int files_left = argc - 1;  //tracks number of files left to map
+  int num_threads = 0;    //tracks number of threads
+  int filenum = 0;
+  args **arguments = malloc(argc*sizeof(void *));
+
+  // Loop so that all files get mapped
+  while(files_left > 0){
+      if(files_left >= num_mappers) {
+          num_threads = num_mappers;
+      }
+      else{
+          num_threads = files_left;
+      }
+
+      //creat num_mappers threads and have them map
+      pthread_t mappers[num_mappers];
+      for(int i = 0; i < num_threads; i++){
+          arguments[i] = malloc(sizeof(struct args));
+          arguments[i]->map = map;
+          arguments[i]->filename = get_filename();
+
+          if (arguments[i]->filename == NULL)
+            break;
+
+          pthread_create(&mappers[i], NULL, &MapPrepare, (void *)arguments[i]);
+          printf("Thread Line Check\n");
+      }
+
+    //join threads after map
+      for(int i = 0; i < num_threads; i++){
+          printf("Parent waiting...\n");
+          pthread_join(mappers[i],NULL);
+       }
+
+  files_left -= num_threads;
+
+  }
+
+  return;
+}
 void *MapPrepare( void *arguments) {
     printf("Inside MapPrepare\n");
     //Grab lock
@@ -275,7 +318,6 @@ void MR_Run(int argc, char *argv[], Mapper map, int num_mappers,Reducer reduce, 
     num_partitions = num_reducers;
 
     //Malloc the original parts which is a LL
-
     parts = malloc(num_partitions * sizeof(*partition));
     if (parts == NULL)
       printf("MALLOC FAILURE MR_Run");
@@ -297,44 +339,12 @@ void MR_Run(int argc, char *argv[], Mapper map, int num_mappers,Reducer reduce, 
     }
 
     partition_iterator = calloc(num_partitions,sizeof(int));
-    char *filename[argc];
+    filename = malloc(sizeof(char*) * argc);
     for(int j = 0; j < argc -1;j++){
-        filename[0] = argv[j+1];
+        filename[j] = argv[j+1];
     }
-    int files_left = argc - 1;  //tracks number of files left to map
-    int num_threads = 0;    //tracks number of threads
-    int filenum = 0;
-    args **arguments = malloc(argc*sizeof(void *));
 
-    // Loop so that all files get mapped
-    while(files_left > 0){
-        if(files_left >= num_mappers) {
-            num_threads = num_mappers;
-        }
-        else{
-            num_threads = files_left;
-        }
-
-        //creat num_mappers threads and have them map
-        pthread_t mappers[num_mappers];
-        for(int i = 0; i < num_threads; i++){
-            arguments[i] = malloc(sizeof(struct args));
-            arguments[i]->map = map;
-            arguments[i]->filename = filename[filenum++];
-
-            pthread_create(&mappers[i], NULL, &MapPrepare, (void *)arguments[i]);
-            printf("Thread Line Check\n");
-        }
-
-      //join threads after map
-        for(int i = 0; i < num_threads; i++){
-            printf("Parent waiting...\n");
-            pthread_join(mappers[i],NULL);
-         }
-
-    files_left -= num_threads;
-
-    }
+    Map_Threads(args);
 
     // Sorts each of the partitions in ascending order
     Partition_sort();
