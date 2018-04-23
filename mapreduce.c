@@ -287,7 +287,7 @@ char *KeySeek(int part_num){
   if (index == parts[part_num]->size)
     return NULL;
   char *returnkey = (sorted_arr[part_num][index]->key);
-  if (returnkey != NULL)
+  //if (returnkey != NULL)
   //  printf("KeySeek returnkey: %s for index: %d of partition number: %d\n", returnkey,  index, part_num);
   return returnkey;
 }
