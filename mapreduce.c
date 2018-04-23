@@ -108,7 +108,7 @@ void MR_Emit(char *key, char *value){
             parts[listno]->end = pair;
             parts[listno]->curr = pair;
             parts[listno]->size++;
-            printf("Added %s to partition %d\n", pair->key, listno);
+        //    printf("Added %s to partition %d\n", pair->key, listno);
             pthread_mutex_unlock(&m);
             return;
     }
@@ -127,7 +127,7 @@ void MR_Emit(char *key, char *value){
             pthread_mutex_unlock(&m);
             //printf("CURR: added value: %s to list for key %s\n",new_val->value,key);
     	      parts[listno]->curr = parts[listno]->head;
-            printf("Added %s to partition %d\n", key, listno);
+          //  printf("Added %s to partition %d\n", key, listno);
     	      return;
 	      }
         else {
@@ -161,7 +161,7 @@ void MR_Emit(char *key, char *value){
     //printf("Leaving MR_EMIT. head->key: %s \n", parts[listno]->head->key);
     //Release lock when done
 
-    printf("Added %s to partition %d\n", pair->key, listno);
+  //  printf("Added %s to partition %d\n", pair->key, listno);
   /*  for(int i = 0; i < num_partitions;i++){
       parts[i]->curr = parts[i]->head;
     }
@@ -239,7 +239,7 @@ void Partition_sort() {
   }
   for(int i = 0; i < num_partitions;i++){
     while (parts[i]->curr != NULL) {
-      printf("Parts[%d]: key = %s\n", i, parts[i]->curr->key);
+    //  printf("Parts[%d]: key = %s\n", i, parts[i]->curr->key);
       parts[i]->curr = parts[i]->curr->nextpair;
 
       }
@@ -258,10 +258,10 @@ void Partition_sort() {
                 break;
             }
             sorted_arr[i][j] = parts[i]->curr;
-            printf(">>>> sorted_arr[%d][%d]->key: %s\n", i,j,sorted_arr[i][j]->key);
+            //printf(">>>> sorted_arr[%d][%d]->key: %s\n", i,j,sorted_arr[i][j]->key);
 
             while (sorted_arr[i][j]->itr != NULL) {
-              printf(">>>> sorted_arr[%d][%d]->value: %s\n", i,j,sorted_arr[i][j]->itr->value);
+            //  printf(">>>> sorted_arr[%d][%d]->value: %s\n", i,j,sorted_arr[i][j]->itr->value);
               sorted_arr[i][j]->itr = sorted_arr[i][j]->itr->nextval;
             }
             sorted_arr[i][j]->itr = sorted_arr[i][j]->values;
@@ -288,7 +288,7 @@ char *KeySeek(int part_num){
     return NULL;
   char *returnkey = (sorted_arr[part_num][index]->key);
   if (returnkey != NULL)
-    printf("KeySeek returnkey: %s for index: %d of partition number: %d\n", returnkey,  index, part_num);
+  //  printf("KeySeek returnkey: %s for index: %d of partition number: %d\n", returnkey,  index, part_num);
   return returnkey;
 }
 
