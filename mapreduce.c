@@ -380,13 +380,13 @@ void MR_Run(int argc, char *argv[], Mapper map, int num_mappers,Reducer reduce, 
 
     //join threads after map
     for(int i = 0; i < num_mappers; i++){
-        printf("Parent waiting...\n");
+        //printf("Parent waiting...\n");
         pthread_join(mappers[i],NULL);
      }
 
      free(filename);
 
-     printf("\n\n----------------------MAPPING ENDING----------------------------\n\n");
+     //printf("\n\n----------------------MAPPING ENDING----------------------------\n\n");
      // Sorts each of the partitions in ascending order
      Partition_sort();
 
@@ -408,6 +408,6 @@ void MR_Run(int argc, char *argv[], Mapper map, int num_mappers,Reducer reduce, 
         for(int i = 0; i < num_partitions; i++){
            pthread_join(reducers[i],NULL);
         }
-      printf("Finished\n");
+      //printf("Finished\n");
     return ;
 }
