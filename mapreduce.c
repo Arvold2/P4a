@@ -55,18 +55,18 @@ Reducer globalreduce;
 
 // needs to take key/value pairs from the many different mappers and store them in a way that later reducers can access them
 void MR_Emit(char *key, char *value){
-    printf("Entering MR_Emit");
+    //printf("Entering MR_Emit");
   for(int i = 0; i < num_partitions;i++){
     parts[i]->curr = parts[i]->head;
   }
   for(int i = 0; i < num_partitions;i++){
     while (parts[i]->curr != NULL) {
-      printf("Parts[%d]: key = %s\n", i, parts[i]->curr->key);
+      //printf("Parts[%d]: key = %s\n", i, parts[i]->curr->key);
       parts[i]->curr = parts[i]->curr->nextpair;
 
       }
     }
-    
+
   for(int i = 0; i < num_partitions;i++){
     parts[i]->curr = parts[i]->head;
   }
@@ -161,7 +161,7 @@ void MR_Emit(char *key, char *value){
     //printf("Leaving MR_EMIT. head->key: %s \n", parts[listno]->head->key);
     //Release lock when done
 
-  //  printf("Added %s to partition %d\n", pair->key, listno);
+    //printf("Added %s to partition %d\n", pair->key, listno);
   /*  for(int i = 0; i < num_partitions;i++){
       parts[i]->curr = parts[i]->head;
     }
@@ -192,7 +192,7 @@ unsigned long MR_DefaultHashPartition(char *key, int num_partitions){
 
 
 char *get_next(char *key, int partition_number){
-    //printf("Inside get_next---> key: %s partition number: %d\n",key, partition_number);
+    printf("Inside get_next---> key: %s partition number: %d\n",key, partition_number);
 
     char *check_key;
     char *return_value = NULL;
