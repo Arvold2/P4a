@@ -55,8 +55,8 @@ Reducer globalreduce;
 
 // needs to take key/value pairs from the many different mappers and store them in a way that later reducers can access them
 void MR_Emit(char *key, char *value){
-//  printf("Entering MR_Emit");
-/*  for(int i = 0; i < num_partitions;i++){
+    printf("Entering MR_Emit");
+  for(int i = 0; i < num_partitions;i++){
     parts[i]->curr = parts[i]->head;
   }
   for(int i = 0; i < num_partitions;i++){
@@ -66,7 +66,7 @@ void MR_Emit(char *key, char *value){
 
       }
     }
-    */
+    
   for(int i = 0; i < num_partitions;i++){
     parts[i]->curr = parts[i]->head;
   }
